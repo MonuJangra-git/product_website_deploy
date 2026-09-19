@@ -1,0 +1,29 @@
+services:
+  web:
+    build: .
+    container_name: customizable-ecommerce-website
+    ports:
+      - "80:80"
+      - "3000:3000"
+    environment:
+      - ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - PAYPAL_MODE=sandbox 
+      - SESSION_SECRET=${SESSION_SECRET}
+      - SITE_URL=http://localhost:3000
+      - STORE_NAME=NovaMart
+      - STORE_CURRENCY=INR         
+      - TAX_PERCENT=0
+      - SUPPORT_EMAIL=support@example.com
+      - ENABLE_COD=true  
+      - ADMIN_EMAIL=admin@store.local
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    
+
+
+
