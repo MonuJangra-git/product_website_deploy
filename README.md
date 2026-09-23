@@ -60,6 +60,7 @@ Add the keys to `.env` (or your host's environment) and restart – nothing else
 1. Add monitoring Section 
 2. Make a CI/CD pipeline using jenkiens 
 3. Design it to make it more simple to deploy , scalable and reliable .
+4. Documentation of this website with screenshot and trial video , provided in /proofs section of repository .
  
 ## Note 
 1. If this repo helps someone , give a star to this repo .
@@ -67,4 +68,5 @@ Add the keys to `.env` (or your host's environment) and restart – nothing else
 
 ## Contact 
  email=jangramonu908@gmail.com
+
 
