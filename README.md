@@ -21,6 +21,17 @@ npm run build && npm start   # http://localhost:3000
 ```
 Products and the admin user (`admin@store.local` / `admin123`, change via `ADMIN_EMAIL` / `ADMIN_PASSWORD`) are seeded automatically on first request.
 
+### Run with Docker
+Start the database container first, push the Drizzle schema and initial parameters, then start the website container:
+
+```bash
+docker compose up postgres    # start the db container 
+docker compose exec web sh npx drizzle-kit push # add tables and initial db parameters like admin details 
+docker compose up -d    # start the app container 
+```
+
+The website is available at http://localhost:3000.
+
 ### Run on a private IP (LAN testing)
 ```bash
 SITE_URL=http://192.168.1.20:3000 npm start -- -H 0.0.0.0 -p 3000
@@ -44,3 +55,16 @@ Add the keys to `.env` (or your host's environment) and restart – nothing else
 2. Set `SITE_URL` to your public https URL and put the app behind a TLS-terminating proxy (nginx/Caddy) – the app reads `x-forwarded-proto`/`x-forwarded-host`.
 3. Use live gateway keys (`rzp_live_…`, `sk_live_…`, `PAYPAL_MODE=live`).
 4. Configure delivery zones and currency in Admin → Settings.
+
+## Next Goals 
+1. Add monitoring Section 
+2. Make a CI/CD pipeline using jenkiens 
+3. Design it to make it more simple to deploy , scalable and reliable .
+ 
+## Note 
+1. If this repo helps someone , give a star to this repo .
+2. If someone wants to make some changes or advice to add more features , then mail me.
+
+## Contact 
+ email=jangramonu908@gmail.com
+
