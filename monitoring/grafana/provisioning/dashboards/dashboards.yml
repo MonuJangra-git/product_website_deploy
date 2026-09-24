@@ -1,0 +1,15 @@
+apiVersion: 1
+
+providers:
+  - name: "default"
+    orgId: 1
+    folder: "My Dashboards" # user can change the folder name as per their requirement. This is the folder name where all the dashboards will be stored in Grafana.
+    folderUid: ""
+    type: file
+    disableDeletion: false
+    editable: true
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards # dashboards folder path in the Grafana container
+      foldersFromFilesStructure: true
