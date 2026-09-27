@@ -1,0 +1,21 @@
+groups:
+  - name: host
+  - name: host_alerts
+    rules:
+      - alert: HostHighCpuUsage
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 10s
+        labels:
+          severity: warning           # warning / critical      
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is {{ $value | humanize }}% on {{ $labels.instance }}"
+      - alert: HostHighCpuUsage
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 70
+        for: 12s
+        labels:
+          severity: critical       
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is {{ $value | humanize }}% on {{ $labels.instance }}"
+# here we can add different types of rules , there are a huge number of options to set rules, so we can add more rules according to production requirement and server traffic .

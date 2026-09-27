@@ -12,8 +12,9 @@ services:
       - PAYPAL_MODE=sandbox 
       - SESSION_SECRET=${SESSION_SECRET}
       - SITE_URL=http://localhost:3000
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
       - STORE_NAME=${STORE_NAME}
-      - STORE_CURRENCY=INR         
+      - STORE_CURRENCY=INR   
       - TAX_PERCENT=0
       - SUPPORT_EMAIL=${SUPPORT_EMAIL}
       - ENABLE_COD=true  

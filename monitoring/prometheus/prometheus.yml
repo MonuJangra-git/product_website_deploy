@@ -2,6 +2,14 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - "alertmanager:9093"
+rule_files:
+  - rules/*.yml
+
 scrape_configs:
 
   # Monitor Prometheus itself
@@ -19,3 +27,8 @@ scrape_configs:
     static_configs:
       - targets:
           - "cadvisor:8080"
+  - job_name: 'alertmanager'
+    static_configs:
+      - targets: ['alertmanager:9093']
+        labels:
+          service: 'alertmanager'
