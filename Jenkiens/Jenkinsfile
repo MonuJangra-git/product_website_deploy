@@ -17,7 +17,7 @@ pipeline {
 
         stage('Copy .env') {
             steps {
-                sh 'cp /home/Work_Docker/.env ./'
+                sh 'cp /${PATH_TO_ENV}/.env ./'
                 echo "Copied .env file copied successfully from the source to the destination."
             }
         }

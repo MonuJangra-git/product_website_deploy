@@ -19,7 +19,7 @@ Full-stack store built with **Next.js (App Router)**, **PostgreSQL** and **Drizz
 ## Quick Start
 
 ```bash
-cp .env.example .env         # edit values
+cp .env.example /absolute/path/to/.env  # choose a secure location and edit values
 npm install
 npx drizzle-kit push         # create tables
 npm run build && npm start   # http://localhost:3000
@@ -84,13 +84,15 @@ Before running the local Jenkins pipeline, use [`permission_on.sh`](permission_o
 
 ### Configure the pipeline name
 
-Copy the example environment file and set the Jenkins values near the bottom of `.env`:
+Copy the example environment file to the directory where you want to keep `.env`, then set the Jenkins values near the bottom of that file:
 
 ```bash
-cp .env.example .env
+cp .env.example /absolute/path/to/.env
 ```
 
 ```dotenv
+# Directory containing the .env file. Do not include /.env here.
+PATH_TO_ENV=/absolute/path/to
 JENKINS_USER=jenkins
 JENKINS_HOME=/var/lib/jenkins
 JENKINS_PIPELINE_NAME=project-pipeline
@@ -116,7 +118,7 @@ It verifies the Jenkins user, creates the configured workspace, enables Docker, 
 The current local Jenkins pipeline is stored in [`Jenkiens/Jenkinsfile`](Jenkiens/Jenkinsfile). It is intended for Jenkins installed on the same Linux machine as Docker. The pipeline:
 
 1. Checks out the `main` branch
-2. Copies `/home/Work_Docker/.env` into the workspace
+2. Copies `${PATH_TO_ENV}/.env` into the workspace
 3. Starts PostgreSQL with Docker Compose
 4. Builds and starts the `web` container
 5. Pushes the Drizzle database schema
@@ -147,7 +149,7 @@ docker --version
 docker compose version
 ```
 
-The file `/home/Work_Docker/.env` must already exist on the Jenkins host and be readable by the Jenkins service. Update the path in the Jenkinsfile if the environment file is stored elsewhere.
+The file `${PATH_TO_ENV}/.env` must already exist on the Jenkins host and be readable by the Jenkins service. `PATH_TO_ENV` must contain the directory only, such as `/srv/novamart/config`; do not set it to `/srv/novamart/config/.env`.
 
 ### Start Jenkins locally
 
@@ -163,9 +165,10 @@ Open [http://localhost:8080](http://localhost:8080), unlock Jenkins with the dis
 ### Create the local pipeline
 
 1. Select **New Item**, enter a job name, choose **Pipeline**, and select **OK**.
-2. In the **Pipeline** section, set **Definition** to **Pipeline script**.
-3. Copy the complete contents of [`Jenkiens/Jenkinsfile`](Jenkiens/Jenkinsfile) and paste it into the Jenkins pipeline editor.
-4. Select **Save**, then **Build Now**.
+2. In **Manage Jenkins → System**, add a global environment variable named `PATH_TO_ENV` whose value is the directory containing `.env`.
+3. In the **Pipeline** section, set **Definition** to **Pipeline script**.
+4. Copy the complete contents of [`Jenkiens/Jenkinsfile`](Jenkiens/Jenkinsfile) and paste it into the Jenkins pipeline editor.
+5. Select **Save**, then **Build Now**.
 
 The Jenkinsfile currently contains no syntax error. If Jenkins reports a pipeline syntax error, copy the complete current file into the pipeline editor again, rather than copying only individual stages.
 
