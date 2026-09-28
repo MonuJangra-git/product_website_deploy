@@ -1,0 +1,50 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'main',
+                    url: 'https://github.com/MonuJangra-git/product_website_deploy.git'
+            }
+        }
+
+        stage('List files') {
+            steps {
+                sh 'ls -la'
+            }
+        }
+
+        stage('Copy .env') {
+            steps {
+                sh 'cp /home/Work_Docker/.env ./'
+                echo "Copied .env file copied successfully from the source to the destination."
+            }
+        }
+
+        stage('Start Postgres') {
+            steps {
+                sh 'docker compose up postgres -d'
+                echo "Postgres container started successfully."
+            }
+        }
+
+        stage('Build & Start Web') {
+            steps {
+                sh 'docker compose up -d --build web'
+            }
+        }
+
+        stage('Run Drizzle Push') {
+            steps {
+                sh 'docker compose run --rm web sh -lc "npx drizzle-kit push"'
+            }
+        }
+
+        stage('Restart Compose') {
+            steps {
+                sh 'docker-compose restart '
+            }
+        }
+    }
+}

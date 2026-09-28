@@ -33,8 +33,10 @@ Products and admin user (`admin@store.local` / `admin123`, override via `ADMIN_E
 
 ```bash
 docker compose up postgres                        # start database
-docker compose exec web sh npx drizzle-kit push  # push schema + seed
-docker compose up -d                              # start app
+docker compose up -d --build web                  
+docker compose run --rm web sh -lc "npx drizzle-kit push"  # push schema + seed
+docker compose  restart web                            # start app
+# from here you work is done , website is started .
 ```
 
 Available at `http://localhost:3000`
@@ -63,6 +65,7 @@ Add keys to `.env` and restart — nothing else needed:
 | COD      | `ENABLE_COD=true` or toggle in admin settings |
 
 > PayPal/Stripe redirect back to `SITE_URL`. Browser geolocation requires `https` or `localhost`.
+Note:- Just add the variables in payment gateways , then start (if 1st time) and restart the containers , Payment gateways added automatically , admin can check it also on webpage.
 
 ---
 
@@ -75,6 +78,105 @@ Add keys to `.env` and restart — nothing else needed:
 
 ---
 
+## Jenkins Permission Setup
+
+Before running the local Jenkins pipeline, use [`permission_on.sh`](permission_on.sh) to give the Jenkins service access to its home, workspace, and Docker. The script must be run with `sudo` and expects a Jenkins user to already exist.
+
+### Configure the pipeline name
+
+Copy the example environment file and set the Jenkins values near the bottom of `.env`:
+
+```bash
+cp .env.example .env
+```
+
+```dotenv
+JENKINS_USER=jenkins
+JENKINS_HOME=/var/lib/jenkins
+JENKINS_PIPELINE_NAME=project-pipeline
+JENKINS_WORKSPACE_DIR=/var/lib/jenkins/workspace/project-pipeline
+```
+
+Run the permission script from the project root before starting or building the Jenkins job:
+
+```bash
+sudo ./permission_on.sh
+```
+
+The script reads these Jenkins settings from `.env`. You can also override the pipeline name for one run:
+
+```bash
+sudo ./permission_on.sh another-pipeline
+```
+
+It verifies the Jenkins user, creates the configured workspace, enables Docker, adds Jenkins to the Docker group, restarts Jenkins, and checks Docker access as the Jenkins user.
+
+## CI/CD with Jenkins
+
+The current local Jenkins pipeline is stored in [`Jenkiens/Jenkinsfile`](Jenkiens/Jenkinsfile). It is intended for Jenkins installed on the same Linux machine as Docker. The pipeline:
+
+1. Checks out the `main` branch
+2. Copies `/home/Work_Docker/.env` into the workspace
+3. Starts PostgreSQL with Docker Compose
+4. Builds and starts the `web` container
+5. Pushes the Drizzle database schema
+6. Restarts the Compose services
+
+### Jenkins prerequisites
+
+Install Java, Jenkins, Docker Engine and the Docker Compose plugin on the host. On Debian or Ubuntu, the Jenkins installation can be started with:
+
+```bash
+sudo apt update
+sudo apt install -y fontconfig openjdk-21-jre
+sudo wget -O /etc/apt/keyrings/jenkins-keyring.asc \
+  https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+echo "deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/" \
+  | sudo tee /etc/apt/sources.list.d/jenkins.list > /dev/null
+sudo apt update
+sudo apt install -y jenkins
+sudo systemctl enable --now jenkins
+```
+
+Give the Jenkins service permission to run Docker, then restart Jenkins:
+
+```bash
+sudo usermod -aG docker jenkins
+sudo systemctl restart jenkins
+docker --version
+docker compose version
+```
+
+The file `/home/Work_Docker/.env` must already exist on the Jenkins host and be readable by the Jenkins service. Update the path in the Jenkinsfile if the environment file is stored elsewhere.
+
+### Start Jenkins locally
+
+Get the initial administrator password and open Jenkins in a browser:
+
+```bash
+sudo systemctl status jenkins
+sudo cat /var/lib/jenkins/secrets/initialAdminPassword
+```
+
+Open [http://localhost:8080](http://localhost:8080), unlock Jenkins with the displayed password, install the suggested plugins, and create an administrator account.
+
+### Create the local pipeline
+
+1. Select **New Item**, enter a job name, choose **Pipeline**, and select **OK**.
+2. In the **Pipeline** section, set **Definition** to **Pipeline script**.
+3. Copy the complete contents of [`Jenkiens/Jenkinsfile`](Jenkiens/Jenkinsfile) and paste it into the Jenkins pipeline editor.
+4. Select **Save**, then **Build Now**.
+
+The Jenkinsfile currently contains no syntax error. If Jenkins reports a pipeline syntax error, copy the complete current file into the pipeline editor again, rather than copying only individual stages.
+
+### Jenkinsfile compatibility note
+
+The pipeline uses `docker compose` for startup but currently uses the older `docker-compose restart` command in its final stage. If the Jenkins host does not provide the hyphenated `docker-compose` command, that stage will fail at runtime; change it to `docker compose restart` in the Jenkinsfile and paste the updated complete file into the Jenkins editor. This is a Docker CLI compatibility issue, not a Jenkins syntax issue.
+
+This local pipeline does not automatically publish images or manage a separate production container deployment. A future `Jenkiens/Jenkinsfile.main` will handle automatic image and container updates when it is added.
+
+---
+
 ## Monitoring (Grafana + Prometheus + cAdvisor)
 
 The stack includes a monitoring setup using:
@@ -84,13 +186,35 @@ The stack includes a monitoring setup using:
 - **Node Exporter** – host/server metrics  
 - **Grafana** – visualization dashboards
 
-Start the monitoring stack with:
+If you want to monitor the server and Docker containers, start the monitoring stack from the project root with:
 
 ```bash
 docker compose -f docker-compose.monitoring.yml up -d
 ```
 
-Grafana is available at `http://localhost:3001`.
+The repository uses `docker-compose.monitoring.yml` as the monitoring Compose file. After the containers start, open Grafana at `http://localhost:3001`, sign in with the configured default credentials (`admin` / `admin123`), and open the provisioned dashboards from **Dashboards**.
+
+Monitoring service URLs:
+
+| Service | URL | Purpose |
+|---------|-----|---------|
+| Grafana | `http://localhost:3001` | View server and container dashboards |
+| Prometheus | `http://localhost:9090` | Query collected metrics |
+| cAdvisor | `http://localhost:8080` | Inspect Docker container metrics |
+| Node Exporter | `http://localhost:9100` | Expose host/server metrics |
+| Alertmanager | `http://localhost:9093` | View configured alerts |
+
+Check the monitoring containers with:
+
+```bash
+docker compose -f docker-compose.monitoring.yml ps
+```
+
+Stop the monitoring stack when it is no longer needed:
+
+```bash
+docker compose -f docker-compose.monitoring.yml down
+```
 
 ### Dashboards Included
 
@@ -255,7 +379,6 @@ cadvisor:
 ---
 
 ### Verify Monitoring Stack
-
 ```bash
 # Check datasource loaded with correct UID
 curl -s -u admin:admin123 http://localhost:3001/api/datasources \
@@ -280,7 +403,8 @@ finished to provision dashboards
 
 - [x] Core e-commerce features
 - [x] Monitoring (Grafana + Prometheus + cAdvisor)
-- [ ] CI/CD pipeline (Jenkins)
+- [x] Local CI/CD pipeline (Jenkins)
+- [ ] Automated image and container updates (`Jenkiens/Jenkinsfile.main`)
 - [ ] Simplified deployment – scalable and reliable
 - [ ] Documentation with screenshots and demo video (`/proofs`)
 
