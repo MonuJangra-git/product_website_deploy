@@ -1,10 +1,26 @@
-# NovaMart – Production-Ready Next.js E-Commerce Starter
+# NovaMart - Production-Ready Next.js E-Commerce Starter
 
-Full-stack store built with **Next.js (App Router)**, **PostgreSQL** and **Drizzle ORM**.
+NovaMart is a full-stack e-commerce application built with **Next.js (App Router)**, **PostgreSQL**, and **Drizzle ORM**. It includes customer shopping, payments, delivery management, administration, monitoring, and Docker-based deployment support.
+
+---
+
+## Deployment and Operations
+
+My role in this project focuses on deploying, operating, and documenting the application. Responsibilities include:
+
+- Deploying the source code to the server and dockerising the application
+- Creating Grafana dashboards and configuring monitoring with Prometheus and cAdvisor
+- Writing Docker Compose and other YAML configuration files for deployment and monitoring
+- Maintaining project documentation for setup, operations, and troubleshooting
+- Managing CI/CD with Jenkins and related deployment configuration
+- Improving the platform so the deployment is scalable, reliable, and secure
+
+This work covers the infrastructure and operational practices required to run and maintain the e-commerce application reliably.
 
 ---
 
 ## Features
+
 - Catalogue with search, categories, sorting and product pages (6 products pre-seeded)
 - Cart (browser-persisted), checkout with server-side price validation and stock control
 - **Delivery**: saved addresses, GPS + reverse geocoding, delivery zones & rates, free-shipping thresholds, store pickup
@@ -19,27 +35,26 @@ Full-stack store built with **Next.js (App Router)**, **PostgreSQL** and **Drizz
 ## Quick Start
 
 ```bash
-cp .env.example /absolute/path/to/.env  # choose a secure location and edit values
+cp .env.example .env  # edit values before starting the application
 npm install
 npx drizzle-kit push         # create tables
 npm run build && npm start   # http://localhost:3000
 ```
 
-Products and admin user (`admin@store.local` / `admin123`, override via `ADMIN_EMAIL` / `ADMIN_PASSWORD`) are seeded automatically on first request.
+Products and the default admin user (`admin@store.local` / `admin123`) are seeded automatically on the first request. Override the credentials with `ADMIN_EMAIL` and `ADMIN_PASSWORD`.
 
 ---
 
 ## Docker
 
 ```bash
-docker compose up postgres                        # start database
-docker compose up -d --build web                  
+docker compose up -d postgres                     # start the database
+docker compose up -d --build web                  # build and start the application
 docker compose run --rm web sh -lc "npx drizzle-kit push"  # push schema + seed
-docker compose  restart web                            # start app
-# from here you work is done , website is started .
+docker compose restart web                        # restart the application
 ```
 
-Available at `http://localhost:3000`
+The application is available at `http://localhost:3000`.
 
 ---
 
@@ -55,7 +70,7 @@ Or leave `SITE_URL` empty and set it in **Admin → Settings → Public Store UR
 
 ## Payment Gateways
 
-Add keys to `.env` and restart — nothing else needed:
+Add the required keys to `.env`, then restart the application. No code changes are required.
 
 | Gateway  | Environment Variables |
 |----------|-----------------------|
@@ -64,65 +79,55 @@ Add keys to `.env` and restart — nothing else needed:
 | Stripe   | `STRIPE_SECRET_KEY` |
 | COD      | `ENABLE_COD=true` or toggle in admin settings |
 
-> PayPal/Stripe redirect back to `SITE_URL`. Browser geolocation requires `https` or `localhost`.
-Note:- Just add the variables in payment gateways , then start (if 1st time) and restart the containers , Payment gateways added automatically , admin can check it also on webpage.
+> PayPal and Stripe redirect back to `SITE_URL`. Browser geolocation requires `https` or `localhost`.
+
+Once the gateway variables are configured, the payment methods are enabled automatically after the application starts or restarts. Their status can be checked from the admin interface.
 
 ---
 
-## Going Live Checklist
+## Production Checklist
 
 1. Set a strong `SESSION_SECRET` and change the admin password
-2. Set `SITE_URL` to your public `https` URL and put the app behind a TLS proxy (nginx/Caddy)
+2. Set `SITE_URL` to the public `https` URL and place the application behind a TLS proxy such as Nginx or Caddy
 3. Use live gateway keys (`rzp_live_…`, `sk_live_…`, `PAYPAL_MODE=live`)
 4. Configure delivery zones and currency in **Admin → Settings**
 
 ---
 
-## Jenkins Permission Setup
+## Jenkins Setup
 
-Before running the local Jenkins pipeline, use [`permission_on.sh`](permission_on.sh) to give the Jenkins service access to its home, workspace, and Docker. The script must be run with `sudo` and expects a Jenkins user to already exist.
-
-### Configure the pipeline name
-
-Copy the example environment file to the directory where you want to keep `.env`, then set the Jenkins values near the bottom of that file:
+Before running the local Jenkins pipeline, use [`permission_on.sh`](permission_on.sh) to give the Jenkins service access to its home, workspace, and Docker. The script must be run with `sudo` and expects a Jenkins user to already exist. Configure the Jenkins values in your local `.env` file before running it:
 
 ```bash
-cp .env.example /absolute/path/to/.env
+cp .env.example .env
 ```
 
 ```dotenv
-# Directory containing the .env file. Do not include /.env here.
-PATH_TO_ENV=/absolute/path/to
 JENKINS_USER=jenkins
 JENKINS_HOME=/var/lib/jenkins
 JENKINS_PIPELINE_NAME=project-pipeline
 JENKINS_WORKSPACE_DIR=/var/lib/jenkins/workspace/project-pipeline
 ```
 
-Run the permission script from the project root before starting or building the Jenkins job:
+Run the permission script from the project root:
 
 ```bash
 sudo ./permission_on.sh
 ```
 
-The script reads these Jenkins settings from `.env`. You can also override the pipeline name for one run:
-
-```bash
-sudo ./permission_on.sh another-pipeline
-```
-
-It verifies the Jenkins user, creates the configured workspace, enables Docker, adds Jenkins to the Docker group, restarts Jenkins, and checks Docker access as the Jenkins user.
+It verifies the Jenkins user, creates the configured workspace, enables Docker, adds Jenkins to the Docker group, restarts Jenkins, and checks Docker access as the Jenkins user. Keep `.env` out of source control.
 
 ## CI/CD with Jenkins
 
 The current local Jenkins pipeline is stored in [`Jenkiens/Jenkinsfile`](Jenkiens/Jenkinsfile). It is intended for Jenkins installed on the same Linux machine as Docker. The pipeline:
 
 1. Checks out the `main` branch
-2. Copies `${PATH_TO_ENV}/.env` into the workspace
+2. Loads `.env` from a Jenkins Secret file credential into the workspace for the build
 3. Starts PostgreSQL with Docker Compose
 4. Builds and starts the `web` container
 5. Pushes the Drizzle database schema
-6. Restarts the Compose services
+6. Starts the `web` service
+7. Deletes `.env` from the workspace after the build
 
 ### Jenkins prerequisites
 
@@ -149,7 +154,7 @@ docker --version
 docker compose version
 ```
 
-The file `${PATH_TO_ENV}/.env` must already exist on the Jenkins host and be readable by the Jenkins service. `PATH_TO_ENV` must contain the directory only, such as `/srv/novamart/config`; do not set it to `/srv/novamart/config/.env`.
+The `.env` file is uploaded to Jenkins as a credential, so it does not need to be stored in the repository or copied from a fixed host path.
 
 ### Start Jenkins locally
 
@@ -164,32 +169,37 @@ Open [http://localhost:8080](http://localhost:8080), unlock Jenkins with the dis
 
 ### Create the local pipeline
 
-1. Select **New Item**, enter a job name, choose **Pipeline**, and select **OK**.
-2. In **Manage Jenkins → System**, add a global environment variable named `PATH_TO_ENV` whose value is the directory containing `.env`.
-3. In the **Pipeline** section, set **Definition** to **Pipeline script**.
-4. Copy the complete contents of [`Jenkiens/Jenkinsfile`](Jenkiens/Jenkinsfile) and paste it into the Jenkins pipeline editor.
-5. Select **Save**, then **Build Now**.
+1. Create a `.env` file on your local system from `.env.example`, then fill in the values required by the application:
 
-The Jenkinsfile currently contains no syntax error. If Jenkins reports a pipeline syntax error, copy the complete current file into the pipeline editor again, rather than copying only individual stages.
+  ```bash
+  cp .env.example .env
+  ```
 
-### Jenkinsfile compatibility note
+2. In Jenkins, open **Manage Jenkins → Credentials**, select the appropriate credential store (usually **System → Global credentials**), and choose **Add Credentials**.
+3. Set **Kind** to **Secret file**, upload the `.env` file created locally, and set its **ID** to `prod-dotenv`. Do not commit this file to Git.
+4. Create a **Pipeline** job from **New Item**, then open its **Pipeline** section.
+5. Set **Definition** to **Pipeline script**.
+6. Copy the complete contents of [`Jenkiens/Jenkinsfile`](Jenkiens/Jenkinsfile), or select the pipeline file if your Jenkins setup supports loading it from source control, and paste the script into the Jenkins pipeline editor.
+7. Select **Save**, then **Build Now**.
 
-The pipeline uses `docker compose` for startup but currently uses the older `docker-compose restart` command in its final stage. If the Jenkins host does not provide the hyphenated `docker-compose` command, that stage will fail at runtime; change it to `docker compose restart` in the Jenkinsfile and paste the updated complete file into the Jenkins editor. This is a Docker CLI compatibility issue, not a Jenkins syntax issue.
+The credential ID must remain `prod-dotenv`, unless `DOTENV_CREDENTIALS_ID` is also changed in the Jenkinsfile. The pipeline copies the credential to `.env` only while the build is running and removes it in the `post` cleanup step.
 
-This local pipeline does not automatically publish images or manage a separate production container deployment. A future `Jenkiens/Jenkinsfile.main` will handle automatic image and container updates when it is added.
+### Future automatic updates
+
+Automatic image publishing and container updates are planned for a future pipeline, such as `Jenkiens/Jenkinsfile.main`. The current pipeline performs local build and deployment steps only; it does not yet automatically update a separate production environment.
 
 ---
 
-## Monitoring (Grafana + Prometheus + cAdvisor)
+## Monitoring
 
-The stack includes a monitoring setup using:
+The monitoring stack uses the following services:
 
 - **Prometheus** – metrics collection
 - **cAdvisor** – container metrics
 - **Node Exporter** – host/server metrics  
 - **Grafana** – visualization dashboards
 
-If you want to monitor the server and Docker containers, start the monitoring stack from the project root with:
+Start the monitoring stack from the project root with:
 
 ```bash
 docker compose -f docker-compose.monitoring.yml up -d
@@ -219,14 +229,14 @@ Stop the monitoring stack when it is no longer needed:
 docker compose -f docker-compose.monitoring.yml down
 ```
 
-### Dashboards Included
+### Included Dashboards
 
 | Dashboard | Description |
 |-----------|-------------|
 | `server-monitoring.json` | CPU, Memory, Disk, Network, Load Average, Uptime |
 | `container-monitoring.json` | Container CPU, Memory, Network, Disk I/O, Processes |
 
-### Provisioning Setup
+### Provisioning Configuration
 
 ```
 monitoring/grafana/
@@ -272,9 +282,9 @@ providers:
 
 ---
 
-## Troubleshooting – Monitoring Setup
+## Monitoring Troubleshooting
 
-### Issue 1 – Dashboards Rejected by Grafana File Provisioner
+### Issue 1: Dashboards Rejected by the Grafana File Provisioner
 
 **Error:**
 ```
@@ -301,7 +311,7 @@ Convert dashboards to classic format. Classic format structure:
 
 ---
 
-### Issue 2 – Datasource UID Mismatch (404 / No Data)
+### Issue 2: Datasource UID Mismatch (404 / No Data)
 
 **Error:**
 ```
@@ -322,7 +332,7 @@ Dashboard JSON references datasource by UID but provisioned datasource has no UI
 | Severity | High – No data shown in any panel |
 | Visible In | Grafana UI + Logs + Browser Console |
 
-> 🔴 **Silent Error** – Grafana loads the dashboard successfully but all panels are empty because queries cannot resolve the datasource.
+> **Silent failure:** Grafana loads the dashboard successfully, but all panels are empty because the queries cannot resolve the datasource.
 
 **Fix:**  
 Add a matching `uid` to `datasource.yml`:
@@ -343,7 +353,7 @@ And update all panel datasource references in dashboard JSON:
 
 ---
 
-### Issue 3 – Missing `apiVersion` in `datasource.yml`
+### Issue 3: Missing `apiVersion` in `datasource.yml`
 
 **Cause:**  
 `datasource.yml` was missing `apiVersion: 1`, causing Grafana to not reliably apply datasource settings.
@@ -360,7 +370,7 @@ datasources:
 
 ---
 
-### Issue 4 – cAdvisor CPU Mountpoint Error
+### Issue 4: cAdvisor CPU Mountpoint Error
 
 **Error:**
 ```
@@ -381,7 +391,7 @@ cadvisor:
 
 ---
 
-### Verify Monitoring Stack
+### Verify the Monitoring Stack
 ```bash
 # Check datasource loaded with correct UID
 curl -s -u admin:admin123 http://localhost:3001/api/datasources \
@@ -407,13 +417,13 @@ finished to provision dashboards
 - [x] Core e-commerce features
 - [x] Monitoring (Grafana + Prometheus + cAdvisor)
 - [x] Local CI/CD pipeline (Jenkins)
+- [x] Dockerized deployment and operational documentation
 - [ ] Automated image and container updates (`Jenkiens/Jenkinsfile.main`)
-- [ ] Simplified deployment – scalable and reliable
+- [ ] Continued scalability, reliability, and security improvements
 - [ ] Documentation with screenshots and demo video (`/proofs`)
 
 ---
 
 ## Contact
 
-If this repo helped you, consider giving it a ⭐  
-For suggestions or contributions → **jangramonu908@gmail.com**
+For questions, suggestions, or contributions, contact **jangramonu908@gmail.com**.
