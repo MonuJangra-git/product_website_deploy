@@ -1,7 +1,7 @@
 import type { ShippingZone, StoreSettings } from "@/lib/settings";
 
 export const COUNTRIES: { code: string; name: string }[] = [
-  { code: "US", name: "United States" },
+  { code: "US", name: "United States (USA)" },
   { code: "IN", name: "India" },
   { code: "GB", name: "United Kingdom" },
   { code: "CA", name: "Canada" },
