@@ -408,6 +408,7 @@ docker logs grafana 2>&1 | grep -E "provision|error|dashboard"
 **Expected output:**
 ```text
 finished to provision dashboards
+
 ```
 
 ---
