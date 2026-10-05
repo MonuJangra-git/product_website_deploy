@@ -43,6 +43,22 @@ npm run build && npm start   # http://localhost:3000
 
 Products and the default admin user (`admin@store.local` / `admin123`) are seeded automatically on the first request. Override the credentials with `ADMIN_EMAIL` and `ADMIN_PASSWORD`.
 
+### Environment configuration
+
+Copy `.env.example` to `.env` and update the values for your environment. Do not commit `.env` or share it because it contains database, administrator, payment, email, and monitoring credentials.
+
+The main application variables are:
+
+| Purpose | Variables |
+|---------|-----------|
+| Database | `DATABASE_URL`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` |
+| Store and public URL | `STORE_NAME`, `STORE_CURRENCY`, `TAX_PERCENT`, `SUPPORT_EMAIL`, `ENABLE_COD`, `SITE_URL`, `SESSION_SECRET` |
+| Initial administrator | `ADMIN_EMAIL`, `ADMIN_PASSWORD` |
+| Payment gateways | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_MODE`, `STRIPE_SECRET_KEY` |
+| Alert email delivery | `SENDERS_MAIL`, `SENDERS_EMAIL_PASSWORD`, `ALERT_RECEIVER_EMAIL` |
+
+The monitoring stack additionally uses `GRAFANA_URL`, `GF_SECURITY_ADMIN_USER`, and `GF_SECURITY_ADMIN_PASSWORD`. The default Grafana URL inside the Compose network is `http://grafana:3000`; use the URL that Grafana should advertise when changing it.
+
 ---
 
 ## Docker
@@ -107,7 +123,10 @@ JENKINS_USER=jenkins
 JENKINS_HOME=/var/lib/jenkins
 JENKINS_PIPELINE_NAME=project-pipeline
 JENKINS_WORKSPACE_DIR=/var/lib/jenkins/workspace/project-pipeline
+SECRET_FILE_NAME=prod-env
 ```
+
+`SECRET_FILE_NAME` is the Jenkins Secret file credential ID used by both pipelines. It defaults to `prod-env`; if you use a different credential ID, update this value in `.env` and in the Jenkins pipeline configuration.
 
 Run the permission script from the project root:
 
@@ -119,15 +138,20 @@ It verifies the Jenkins user, creates the configured workspace, enables Docker, 
 
 ## CI/CD with Jenkins
 
-The current local Jenkins pipeline is stored in [`Jenkiens/Jenkinsfile`](Jenkiens/Jenkinsfile). It is intended for Jenkins installed on the same Linux machine as Docker. The pipeline:
+The Jenkins pipelines are stored in the [`Jenkiens/`](Jenkiens/) directory and are intended for Jenkins installed on the same Linux machine as Docker. Use them in this order:
+
+1. [`Jenkiens/Jenkinsfile.init`](Jenkiens/Jenkinsfile.init) for the first pipeline run and initial application setup
+2. [`Jenkiens/Jenkinsfile.main`](Jenkiens/Jenkinsfile.main) only after the initialization pipeline completes successfully, for subsequent automated website updates
+
+Both pipelines:
 
 1. Checks out the `main` branch
 2. Loads `.env` from a Jenkins Secret file credential into the workspace for the build
-3. Starts PostgreSQL with Docker Compose
+3. Verifies the Docker Compose configuration
 4. Builds and starts the `web` container
-5. Pushes the Drizzle database schema
-6. Starts the `web` service
-7. Deletes `.env` from the workspace after the build
+5. Deletes `.env` from the workspace after the build
+
+`Jenkinsfile.init` additionally starts PostgreSQL and pushes the Drizzle database schema before starting the application for the first time. `Jenkinsfile.main` is the lighter recurring deployment pipeline: use it for automated updates after the initial database and application setup has succeeded.
 
 ### Jenkins prerequisites
 
@@ -167,7 +191,7 @@ sudo cat /var/lib/jenkins/secrets/initialAdminPassword
 
 Open [http://localhost:8080](http://localhost:8080), unlock Jenkins with the displayed password, install the suggested plugins, and create an administrator account.
 
-### Create the local pipeline
+### Create the initial pipeline
 
 1. Create a `.env` file on your local system from `.env.example`, then fill in the values required by the application:
 
@@ -176,17 +200,17 @@ Open [http://localhost:8080](http://localhost:8080), unlock Jenkins with the dis
   ```
 
 2. In Jenkins, open **Manage Jenkins → Credentials**, select the appropriate credential store (usually **System → Global credentials**), and choose **Add Credentials**.
-3. Set **Kind** to **Secret file**, upload the `.env` file created locally, and set its **ID** to `prod-dotenv`. Do not commit this file to Git.
+3. Set **Kind** to **Secret file**, upload the `.env` file created locally, and set its **ID** to the value of `SECRET_FILE_NAME` (default: `prod-env`). Do not commit this file to Git.
 4. Create a **Pipeline** job from **New Item**, then open its **Pipeline** section.
 5. Set **Definition** to **Pipeline script**.
-6. Copy the complete contents of [`Jenkiens/Jenkinsfile`](Jenkiens/Jenkinsfile), or select the pipeline file if your Jenkins setup supports loading it from source control, and paste the script into the Jenkins pipeline editor.
+6. Copy the complete contents of [`Jenkiens/Jenkinsfile.init`](Jenkiens/Jenkinsfile.init), or select this pipeline file if your Jenkins setup supports loading it from source control, and paste the script into the Jenkins pipeline editor.
 7. Select **Save**, then **Build Now**.
 
-The credential ID must remain `prod-dotenv`, unless `DOTENV_CREDENTIALS_ID` is also changed in the Jenkinsfile. The pipeline copies the credential to `.env` only while the build is running and removes it in the `post` cleanup step.
+The pipeline reads the credential ID from `SECRET_FILE_NAME`, copies the credential to `.env` only while the build is running, and removes it in the `post` cleanup step.
 
-### Future automatic updates
+### Configure automated updates after initialization
 
-Automatic image publishing and container updates are planned for a future pipeline, such as `Jenkiens/Jenkinsfile.main`. The current pipeline performs local build and deployment steps only; it does not yet automatically update a separate production environment.
+After the initial [`Jenkinsfile.init`](Jenkiens/Jenkinsfile.init) run finishes successfully, update the Jenkins job to use [`Jenkiens/Jenkinsfile.main`](Jenkiens/Jenkinsfile.main). Do not use `Jenkinsfile.main` as the first run: it assumes the initial setup has already completed. Configure the job to run on your desired trigger, such as a GitHub webhook or a scheduled poll, so changes pushed to `main` automatically rebuild and restart the website container.
 
 ---
 
@@ -205,7 +229,7 @@ Start the monitoring stack from the project root with:
 docker compose -f docker-compose.monitoring.yml up -d
 ```
 
-The repository uses `docker-compose.monitoring.yml` as the monitoring Compose file. After the containers start, open Grafana at `http://localhost:3001`, sign in with the configured default credentials (`admin` / `admin123`), and open the provisioned dashboards from **Dashboards**.
+The repository uses `docker-compose.monitoring.yml` as the monitoring Compose file. It reads `GRAFANA_URL`, `GF_SECURITY_ADMIN_USER`, and `GF_SECURITY_ADMIN_PASSWORD` from `.env`. After the containers start, open Grafana at `http://localhost:3001`, sign in with the configured credentials, and open the provisioned dashboards from **Dashboards**. Change the example Grafana password before using the monitoring stack outside local development.
 
 Monitoring service URLs:
 
@@ -394,11 +418,11 @@ cadvisor:
 ### Verify the Monitoring Stack
 ```bash
 # Check datasource loaded with correct UID
-curl -s -u admin:admin123 http://localhost:3001/api/datasources \
+curl -s -u "$GF_SECURITY_ADMIN_USER:$GF_SECURITY_ADMIN_PASSWORD" http://localhost:3001/api/datasources \
   | python3 -m json.tool | grep -E "uid|name"
 
 # Check dashboards provisioned
-curl -s -u admin:admin123 "http://localhost:3001/api/search?type=dash-db" \
+curl -s -u "$GF_SECURITY_ADMIN_USER:$GF_SECURITY_ADMIN_PASSWORD" "http://localhost:3001/api/search?type=dash-db" \
   | python3 -m json.tool | grep title
 
 # Check Grafana logs
@@ -419,6 +443,8 @@ finished to provision dashboards
 - [x] Monitoring (Grafana + Prometheus + cAdvisor)
 - [x] Local CI/CD pipeline (Jenkins)
 - [x] Dockerized deployment and operational documentation
+- [ ] SSL/TLS setup for secure HTTPS access
+- [ ] Configure a production domain for the website
 - [ ] Automated image and container updates (`Jenkiens/Jenkinsfile.main`)
 - [ ] Continued scalability, reliability, and security improvements
 - [ ] Documentation with screenshots and demo video (`/proofs`)

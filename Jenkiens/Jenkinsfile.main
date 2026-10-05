@@ -1,7 +1,7 @@
 pipeline {
     agent any
     environment {
-        DOTENV_CREDENTIALS_ID = 'prod-dotenv'   // Jenkins Credentials -> Secret file ID            
+        DOTENV_CREDENTIALS_ID = $SECRET_FILE_NAME   // Jenkins Credentials -> Secret file ID            
   }
 
     stages {
@@ -44,31 +44,12 @@ pipeline {
             }
         }
 
-        // stage('Copy .env') {
-        //     steps {
-        //         sh 'cp /${PATH_TO_ENV}/.env ./'
-        //         echo "Copied .env file copied successfully from the source to the destination."
-        //     }
-        // } //this is older method not safe and not recommended, using Jenkins credentials is better
-
-        // stage('Start Postgres') {
-        //     steps {
-        //         sh 'docker compose --env-file ./.env up -d postgres'
-        //         echo "Postgres container started successfully."
-        //     }
-        // }
 
         stage('Build & Start Web') {
             steps {
                 sh 'docker compose --env-file ./.env build web'
             }
         }
-
-        // stage('Run Drizzle Push') {
-        //     steps {
-        //         sh 'docker compose --env-file ./.env run --rm web sh -lc "npx drizzle-kit push"'
-        //     }
-        // }
 
         stage('Restart Compose') {
             steps {

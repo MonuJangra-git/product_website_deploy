@@ -1,9 +1,10 @@
 pipeline {
     agent any
     environment {
-        //for first time copy your .env file to the Jenkins credentials and then use the credentials id here, so that we can load the .env file at runtime only and not store it in the repository.
+        //for first time copy your .env file to the Jenkins credentials and then use the credentials id here, 
+        // so that we can load the .env file at runtime only and not store it in the repository.
 
-        DOTENV_CREDENTIALS_ID = 'prod-dotenv'   // Jenkins Credentials -> Secret file ID            
+        DOTENV_CREDENTIALS_ID = $SECRET_FILE_NAME   // Jenkins Credentials -> Secret file ID            
   }
 
     stages {
@@ -44,13 +45,6 @@ pipeline {
                 '''
             }
         }
-
-        // stage('Copy .env') {
-        //     steps {
-        //         sh 'cp /${PATH_TO_ENV}/.env ./'
-        //         echo "Copied .env file copied successfully from the source to the destination."
-        //     }
-        // } //this is older method not safe and not recommended, using Jenkins credentials is better
 
         stage('Start Postgres') {
             steps {
