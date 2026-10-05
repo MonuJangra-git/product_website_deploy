@@ -1,6 +1,8 @@
 pipeline {
     agent any
     environment {
+        //for first time copy your .env file to the Jenkins credentials and then use the credentials id here, so that we can load the .env file at runtime only and not store it in the repository.
+
         DOTENV_CREDENTIALS_ID = 'prod-dotenv'   // Jenkins Credentials -> Secret file ID            
   }
 
@@ -17,8 +19,8 @@ pipeline {
                    withCredentials([file(credentialsId: env.DOTENV_CREDENTIALS_ID, variable: 'DOTENV')]) {
 
                     sh '''
-                        cp "$DOTENV" .env
-                        chmod 600 .env
+                        cp "$DOTENV" ./.env
+                        chmod 600 ./.env
                         echo ".env file copied successfully from Jenkins credentials to the workspace."
                     '''
 
@@ -33,6 +35,14 @@ pipeline {
             steps {
                 sh 'ls -la'
             }
+        } 
+        stage('Verify build configuration') {
+            steps {
+                sh '''
+                    docker compose --env-file ./.env config --quiet
+                    echo "Docker Compose configuration is valid."
+                '''
+            }
         }
 
         // stage('Copy .env') {
@@ -44,29 +54,31 @@ pipeline {
 
         stage('Start Postgres') {
             steps {
-                sh 'docker compose --env-file .env up  -d  postgres '
+                sh 'docker compose --env-file ./.env up -d postgres'
                 echo "Postgres container started successfully."
             }
         }
 
         stage('Build & Start Web') {
             steps {
-                sh 'docker compose --env-file .env build web'
+                sh 'docker compose --env-file ./.env build web'
             }
         }
 
         stage('Run Drizzle Push') {
             steps {
-                sh 'docker compose --env-file .env run --rm web sh -lc "npx drizzle-kit push" '
+                sh 'docker compose --env-file ./.env run --rm web sh -lc "npx drizzle-kit push"'
             }
         }
 
         stage('Restart Compose') {
             steps {
-                sh 'docker compose --env-file .env up  -d  web'
+                sh 'docker compose --env-file ./.env up -d web'
+                echo "Docker Compose restarted successfully for the first time. Change this pipeline code to Jenkinsfile.main for automation."
             }
         }
     }
+
     post {
         always {
             sh 'rm -f .env || true'

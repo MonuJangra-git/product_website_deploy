@@ -1,6 +1,9 @@
 services:
   web:
-    build: .
+    build:
+      context: .
+      args:
+        DATABASE_URL: ${DATABASE_URL}
     container_name: customizable-ecommerce-website
     ports:
       - "3000:3000"
@@ -53,6 +56,5 @@ networks:
   webnet:
 
     
-
 
 

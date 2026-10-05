@@ -2,6 +2,11 @@ FROM node:24-bookworm-slim AS build
 WORKDIR /app
 ENV CI=true
 
+# Next.js evaluates database-backed modules while collecting routes.
+# The connection string is supplied as a build argument by Compose.
+ARG DATABASE_URL
+ENV DATABASE_URL=${DATABASE_URL}
+
 COPY package.json package-lock.json ./
 RUN npm install
 
