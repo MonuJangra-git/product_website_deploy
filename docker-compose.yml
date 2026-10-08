@@ -14,7 +14,7 @@ services:
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - PAYPAL_MODE=sandbox 
       - SESSION_SECRET=${SESSION_SECRET}
-      - SITE_URL=http://localhost:3000
+      - SITE_URL=https://www.taskflows.live
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
       - STORE_NAME=${STORE_NAME}
       - STORE_CURRENCY=INR   

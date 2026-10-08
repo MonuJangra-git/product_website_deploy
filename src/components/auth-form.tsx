@@ -53,13 +53,6 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
             <>Already have an account? <Link className="font-semibold text-indigo-700" href={`/login?next=${encodeURIComponent(next)}`}>Log in</Link></>
           )}
         </p>
-        {mode === "login" && (
-          <div className="mt-6 rounded-xl bg-slate-50 p-3 text-xs text-slate-600">
-            <p className="font-semibold text-slate-800">Test admin account</p>
-            <p>Email: <code>admin@store.local</code> · Password: <code>admin123</code></p>
-            <p className="mt-1">Change via ADMIN_EMAIL / ADMIN_PASSWORD env vars before going live.</p>
-          </div>
-        )}
       </div>
     </main>
   );
